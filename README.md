@@ -20,11 +20,6 @@ This extension does not currently contribute any settings.
 
 There are no known issues at the moment.
 
-## Release Notes
-
-0.0.1
-Initial release of lwc-apex-navigation.
-
 ## Running Tests
 
 Tests will be added in a future update.
