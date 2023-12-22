@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { findApexMethodInClassFile } from './findApexMethodInClassFile';
 
-export async function getDefinitionLinks(
+export async function getLocationLinks(
   classFile: string,
   methodName: string,
   apexMethodTokenRange: vscode.Range
@@ -9,12 +9,12 @@ export async function getDefinitionLinks(
   const targetRanges = await findApexMethodInClassFile(classFile, methodName);
 
   return targetRanges.map((targetRange) => {
-    const definitionLink: vscode.DefinitionLink = {
+    const LocationLink: vscode.LocationLink = {
       originSelectionRange: apexMethodTokenRange,
       targetUri: vscode.Uri.file(classFile),
       targetRange,
     };
 
-    return definitionLink;
+    return LocationLink;
   });
 }

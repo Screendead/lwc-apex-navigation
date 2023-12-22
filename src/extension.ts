@@ -7,8 +7,7 @@ import { getLines } from './getLines';
 import { getApexMethodTokensInLine } from './getApexMethodTokensInLine';
 import { getApexMethodAtCursorPosition } from './getApexMethodAtCursorPosition';
 import { getApexMethodTokenRange } from './getApexMethodTokenRange';
-import { getDefinitionLink } from './getDefinitionLinks';
-import { classFilesToDefinitionLinks } from './classFilesToDefinitionLinks';
+import { classFilesToLocationLinks } from './classFilesToLocationLinks';
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Extension "lwc-apex-navigation" is now active');
@@ -59,7 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
           );
         }
 
-        return classFilesToDefinitionLinks(
+        return classFilesToLocationLinks(
           classFiles,
           apexMethodAtCursorPosition.methodName,
           apexMethodTokenRange

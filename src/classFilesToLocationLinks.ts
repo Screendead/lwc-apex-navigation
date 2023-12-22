@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { getDefinitionLinks } from './getDefinitionLinks';
+import { getLocationLinks } from './getLocationLinks';
 
-export async function classFilesToDefinitionLinks(
+export async function classFilesToLocationLinks(
   classFiles: string[],
   methodName: string,
   apexMethodTokenRange: vscode.Range
@@ -9,7 +9,7 @@ export async function classFilesToDefinitionLinks(
   return (
     await Promise.all(
       classFiles.map((classFile) => {
-        return getDefinitionLinks(classFile, methodName, apexMethodTokenRange);
+        return getLocationLinks(classFile, methodName, apexMethodTokenRange);
       })
     )
   )
