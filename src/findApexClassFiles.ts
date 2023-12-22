@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as path from 'path';
 
 export async function findApexClassFiles(className: string): Promise<string[]> {
   const searchTerm = `class ${className}`,
