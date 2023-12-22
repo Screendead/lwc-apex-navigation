@@ -1,6 +1,14 @@
 import * as vscode from 'vscode';
 import { findApexClassFiles } from './findApexClassFiles';
 import { findApexMethodInClassFile } from './findApexMethodInClassFile';
+import { extractApexMethodImportStatements } from './extractApexMethodImportStatements';
+import { extractApexMethodDefinition } from './extractApexMethodDefinition';
+import { getLines } from './getLines';
+import { getApexMethodTokensInLine } from './getApexMethodTokensInLine';
+import { getApexMethodAtCursorPosition } from './getApexMethodAtCursorPosition';
+import { getApexMethodTokenRange } from './getApexMethodTokenRange';
+import { getDefinitionLink } from './getDefinitionLinks';
+import { classFilesToDefinitionLinks } from './classFilesToDefinitionLinks';
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Extension "lwc-apex-navigation" is now active');
@@ -16,100 +24,46 @@ export function activate(context: vscode.ExtensionContext) {
         position: vscode.Position,
         token: vscode.CancellationToken
       ) {
-        const availableApexMethods: {
-            className: string;
-            methodName: string;
-          }[] = document
-            .getText()
-            .split('\n')
-            .filter(
-              (line) =>
-                line.startsWith('import') && line.includes('@salesforce/apex/')
-            )
-            .map((line) => {
-              const className = line.match(
-                  /@salesforce\/apex\/(\w+)\.\w+/
-                )?.[1],
-                methodName = line.split(' ')[1];
-
-              if (!className || !methodName) {
-                return null;
-              }
-
-              return { className, methodName };
-            })
-            .filter(
-              (item): item is { className: string; methodName: string } =>
-                item !== null
-            ),
-          currentLine = document.lineAt(position.line).text,
-          currentApexMethods = availableApexMethods
-            .filter(({ methodName }) => currentLine.indexOf(methodName) !== -1)
-            .map(({ className, methodName }) => {
-              const methodNamePosition = currentLine.indexOf(methodName),
-                startPosition = new vscode.Position(
-                  position.line,
-                  methodNamePosition
-                ),
-                endPosition = new vscode.Position(
-                  position.line,
-                  methodNamePosition + methodName.length
-                );
-
-              return {
-                className,
-                methodName,
-                originStartPosition: startPosition,
-                originEndPosition: endPosition,
-              };
-            })
-            .filter(({ originStartPosition, originEndPosition }) => {
-              return (
-                position.isAfterOrEqual(originStartPosition) &&
-                position.isBeforeOrEqual(originEndPosition)
-              );
-            });
-
-        if (currentApexMethods.length === 0) {
-          return null;
-        } else if (currentApexMethods.length > 1) {
-          console.log('Apex Methods', currentApexMethods);
-          return null;
-        }
-
-        const [methodInfo] = currentApexMethods,
-          classFiles = await findApexClassFiles(methodInfo.className);
-
-        if (classFiles.length === 0) {
-          return null;
-        } else if (classFiles.length > 1) {
-          console.log('Apex Class Files', classFiles);
-          return null;
-        }
-
-        const fileToOpen = {
-            ...methodInfo,
-            classFile: classFiles[0],
-          },
-          targetRange = await findApexMethodInClassFile(
-            fileToOpen.classFile,
-            methodInfo.methodName
+        const lines = getLines(document),
+          currentLine = document.lineAt(position.line),
+          apexMethodImportStatements = extractApexMethodImportStatements(lines),
+          apexMethodDefinitions = apexMethodImportStatements.map(
+            extractApexMethodDefinition
+          ),
+          apexMethodTokensInCurrentLine = getApexMethodTokensInLine(
+            apexMethodDefinitions,
+            currentLine.text,
+            position.line
+          ),
+          apexMethodAtCursorPosition = getApexMethodAtCursorPosition(
+            apexMethodTokensInCurrentLine,
+            position
           );
 
-        if (targetRange === null) {
+        if (apexMethodAtCursorPosition === null) {
           return null;
         }
 
-        const definitionLink: vscode.DefinitionLink = {
-          originSelectionRange: new vscode.Range(
-            fileToOpen.originStartPosition,
-            fileToOpen.originStartPosition
+        const apexMethodTokenRange = getApexMethodTokenRange(
+            currentLine,
+            position,
+            apexMethodAtCursorPosition.methodName
           ),
-          targetUri: vscode.Uri.file(fileToOpen.classFile),
-          targetRange,
-        };
+          classFiles = await findApexClassFiles(
+            apexMethodAtCursorPosition.className
+          );
 
-        return [definitionLink];
+        if (classFiles.length === 0) {
+          throw new Error(
+            `Apex method ${apexMethodAtCursorPosition.className}.${apexMethodAtCursorPosition.methodName} correctly identified, but no file was found containing the enclosing class.`
+          );
+        }
+
+        return classFilesToDefinitionLinks(
+          classFiles,
+          apexMethodAtCursorPosition.methodName,
+          apexMethodTokenRange
+        );
       },
     }
   );
