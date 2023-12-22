@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { findApexClassFiles } from './findApexClassFiles';
-import { findApexMethodInClassFile } from './findApexMethodInClassFile';
 import { extractApexMethodImportStatements } from './extractApexMethodImportStatements';
 import { extractApexMethodDefinition } from './extractApexMethodDefinition';
 import { getLines } from './getLines';
