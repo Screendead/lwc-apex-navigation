@@ -1,26 +1,120 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { findApexClassFiles } from './findApexClassFiles';
+import { findApexMethodInClassFile } from './findApexMethodInClassFile';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  console.log('Extension "lwc-apex-navigation" is now active');
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "lwc-apex-navigation" is now active!');
+  const disposable = vscode.languages.registerDefinitionProvider(
+    {
+      language: 'javascript',
+      scheme: 'file',
+    },
+    {
+      async provideDefinition(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        token: vscode.CancellationToken
+      ) {
+        const availableApexMethods: {
+            className: string;
+            methodName: string;
+          }[] = document
+            .getText()
+            .split('\n')
+            .filter(
+              (line) =>
+                line.startsWith('import') && line.includes('@salesforce/apex/')
+            )
+            .map((line) => {
+              const className = line.match(
+                  /@salesforce\/apex\/(\w+)\.\w+/
+                )?.[1],
+                methodName = line.split(' ')[1];
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('lwc-apex-navigation.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from lwc-apex-navigation!');
-	});
+              if (!className || !methodName) {
+                return null;
+              }
 
-	context.subscriptions.push(disposable);
+              return { className, methodName };
+            })
+            .filter(
+              (item): item is { className: string; methodName: string } =>
+                item !== null
+            ),
+          currentLine = document.lineAt(position.line).text,
+          currentApexMethods = availableApexMethods
+            .filter(({ methodName }) => currentLine.indexOf(methodName) !== -1)
+            .map(({ className, methodName }) => {
+              const methodNamePosition = currentLine.indexOf(methodName),
+                startPosition = new vscode.Position(
+                  position.line,
+                  methodNamePosition
+                ),
+                endPosition = new vscode.Position(
+                  position.line,
+                  methodNamePosition + methodName.length
+                );
+
+              return {
+                className,
+                methodName,
+                originStartPosition: startPosition,
+                originEndPosition: endPosition,
+              };
+            })
+            .filter(({ originStartPosition, originEndPosition }) => {
+              return (
+                position.isAfterOrEqual(originStartPosition) &&
+                position.isBeforeOrEqual(originEndPosition)
+              );
+            });
+
+        if (currentApexMethods.length === 0) {
+          return null;
+        } else if (currentApexMethods.length > 1) {
+          console.log('Apex Methods', currentApexMethods);
+          return null;
+        }
+
+        const [methodInfo] = currentApexMethods,
+          classFiles = await findApexClassFiles(methodInfo.className);
+
+        if (classFiles.length === 0) {
+          return null;
+        } else if (classFiles.length > 1) {
+          console.log('Apex Class Files', classFiles);
+          return null;
+        }
+
+        const fileToOpen = {
+            ...methodInfo,
+            classFile: classFiles[0],
+          },
+          targetRange = await findApexMethodInClassFile(
+            fileToOpen.classFile,
+            methodInfo.methodName
+          );
+
+        if (targetRange === null) {
+          return null;
+        }
+
+        const definitionLink: vscode.DefinitionLink = {
+          originSelectionRange: new vscode.Range(
+            fileToOpen.originStartPosition,
+            fileToOpen.originStartPosition
+          ),
+          targetUri: vscode.Uri.file(fileToOpen.classFile),
+          targetRange,
+        };
+
+        return [definitionLink];
+      },
+    }
+  );
+
+  context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}
