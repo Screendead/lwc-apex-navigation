@@ -11,7 +11,7 @@ export function getApexMethodTokensInLine(
   return apexMethodDefinitions
     .map((apexMethodDefinition) => {
       const startPosition = getApexMethodNameLocationInLine(
-        apexMethodDefinition,
+        apexMethodDefinition.methodName,
         line
       );
 

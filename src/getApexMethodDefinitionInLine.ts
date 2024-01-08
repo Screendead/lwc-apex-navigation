@@ -1,10 +1,10 @@
 import { ApexMethodDefinition } from './ApexMethodDefinition';
 
 export function getApexMethodNameLocationInLine(
-  apexMethodDefinition: ApexMethodDefinition,
+  methodName: string,
   line: string
 ): number | null {
-  const index = line.indexOf(apexMethodDefinition.methodName);
+  const index = line.indexOf(methodName);
 
   if (index === -1) {
     return null;
