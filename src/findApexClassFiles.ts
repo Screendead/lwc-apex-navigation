@@ -5,12 +5,11 @@ export async function findApexClassFiles(className: string): Promise<string[]> {
   const searchTerm = `class ${className}`,
     clsFiles = await vscode.workspace.findFiles(
       'force-app/main/default/classes/**/*.cls'
-    );
-
-  return clsFiles
-    .filter((file) => {
+    ),
+    clsFilesContainingSearchTerm = clsFiles.filter((file) => {
       const content = fs.readFileSync(file.fsPath, 'utf-8');
       return content.includes(searchTerm);
-    })
-    .map((file) => file.fsPath);
+    });
+
+  return clsFilesContainingSearchTerm.map((file) => file.fsPath);
 }
